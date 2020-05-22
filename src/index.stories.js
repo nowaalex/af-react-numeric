@@ -19,6 +19,10 @@ export const AlwaysAllowZero = () => (
     <NumericInput maskLength={5} max={100} min={10} alwaysAllowZero />
 );
 
+export const PrefixSuffix = () => (
+    <NumericInput maskLength={5} prefix="HAHA " suffix=" HOHO" alwaysAllowZero />
+);
+
 export const WithButtons = () => {
 
     const ref = useRef();
@@ -44,3 +48,7 @@ export const WithIntervalButtons = () => {
         </div>
     );
 };
+
+export const getValueAfterRelativeInput = () => (
+    <NumericInput getValueAfterRelativeInput={( curValue, step ) => curValue ? curValue + step : 1234 } />
+);

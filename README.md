@@ -1,0 +1,1 @@
+React component, which allows only numbers to be entered. Masking is supported. Wel suited for price inputs.

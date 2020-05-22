@@ -4,15 +4,15 @@ import PropTypes from "prop-types";
 const AUTO_INCREASE_INTERVAL = 50;
 const AUTO_INCREASE_DELAY = 300;
 
-const throttle = ( fn, wait ) => {
+const debounceByAnimationFrame = fn => {
 
     let timer = 0;
 
-    const cancel = () => clearTimeout( timer );
+    const cancel = () => cancelAnimationFrame( timer );
 
     const resultFn = () => {
         cancel();
-        timer = setTimeout( fn, wait );
+        timer = requestAnimationFrame( fn );
     };
 
     resultFn.cancel = cancel;
@@ -20,7 +20,7 @@ const throttle = ( fn, wait ) => {
     return resultFn;
 };
 
-const removeNonNumericSymbols = str => str.replace( /[^\.,\d\-]/g, "" );
+const clamp = ( v, min, max ) => v > max ? max : v < min ? min : v;
 
 const getFractionPos = inputValue => inputValue.search( /\.|\,/ );
 
@@ -36,14 +36,14 @@ const getNumericValue = ( numericValue, min, max, alwaysAllowZero ) => {
         return 0;
     }
 
-    return Math.max( Math.min( numericValue, max ), min );
+    return clamp( numericValue, min, max );
 }
 
-const getStringValue = ( numericValue, maskLength ) => {
+const getStringValue = ( numericValue, maskLength, prefix, suffix ) => {
     /* negative zero issue */
     const missingSign = numericValue === 0 && 1 / numericValue === -Infinity ? "-" : "";
     const val = maskLength ? numericValue.toFixed( maskLength + 5 ).slice( 0, -5 ) : numericValue.toString();
-    return missingSign + val;
+    return prefix + missingSign + val + suffix;
 }
 
 const getValueAfterRelativeInputDefault = ( currentValue, valueToAdd ) => currentValue + valueToAdd;
@@ -63,16 +63,16 @@ class NumericInputCore extends PureComponent {
         };
 
         this.fractionPos = -1;
-        this.caretPos = 0;
+        this.caretPos = props.prefix.length;
         this.inputRef = createRef();
         this.autoIncreaseInterval = null;
         this.autoIncreaseStartTimer = null;
     }
 
-    static getDerivedStateFromProps({ value, maskLength, min, max, alwaysAllowZero }, { valueProp, stringValue, numericValue }){
+    static getDerivedStateFromProps({ value, maskLength, min, max, prefix, suffix, alwaysAllowZero }, { valueProp, stringValue, numericValue }){
         const base = value !== valueProp ? value : numericValue;
         const finalNumericValue = getNumericValue( base, min, max, alwaysAllowZero );
-        const finalStringValue = getStringValue( finalNumericValue, maskLength );
+        const finalStringValue = getStringValue( finalNumericValue, maskLength, prefix, suffix );
 
         return finalStringValue !== stringValue || finalNumericValue !== numericValue || value !== valueProp ? {
             numericValue: finalNumericValue,
@@ -81,13 +81,13 @@ class NumericInputCore extends PureComponent {
         } : null;
     }
 
-    syncCursorPos = throttle(() => {
+    syncCursorPos = debounceByAnimationFrame(() => {
         const { current } = this.inputRef;
         if( document.activeElement !== current ){
             current.focus();
         }
         current.setSelectionRange( this.caretPos, this.caretPos );
-    }, 10, { leading: false });
+    });
 
     onAfterValueChanged = () => {
         this.syncCursorPos();
@@ -97,8 +97,9 @@ class NumericInputCore extends PureComponent {
     }
 
     changeValue( newNumericValue, isRelative ){
-        this.setState(({ numericValue, stringValue }, { getValueAfterRelativeInput }) => {
-            this.caretPos = this.inputRef.current.selectionStart;
+        this.setState(({ numericValue, stringValue }, { getValueAfterRelativeInput, prefix, suffix }) => {
+            const { selectionStart } = this.inputRef.current;
+            this.caretPos = clamp( selectionStart, prefix.length, stringValue.length - suffix.length );
             this.fractionPos = getFractionPos( stringValue );
             return {
                 numericValue: isRelative ? getValueAfterRelativeInput( numericValue, newNumericValue ) : newNumericValue
@@ -107,10 +108,14 @@ class NumericInputCore extends PureComponent {
     };
 
     changeHandler = ({ target: { value } }) => {
-        const n = value ? parseFloat(addFractionIfRemoved(removeNonNumericSymbols(value), this.fractionPos )) : 0;
-        if( !Number.isNaN( n ) ){
-            this.changeValue( n, false );
-        }
+        const { prefix, suffix } = this.props;
+        const numericValue = parseFloat(
+            addFractionIfRemoved( value, this.fractionPos )
+                .slice( prefix.length, -suffix.length || undefined )
+                .replace( /[^\.,\d\-]/g, "" )
+        );
+
+        this.changeValue( Number.isNaN( numericValue ) ? 0 : numericValue, false );
     }
 
     wheelHandler = ({ deltaY }) => {
@@ -172,6 +177,8 @@ class NumericInputCore extends PureComponent {
             alwaysAllowZero,
             Component,
             getValueAfterRelativeInput,
+            prefix,
+            suffix,
             ...props
         } = this.props;
     
@@ -212,6 +219,8 @@ class NumericInputCore extends PureComponent {
 };
 
 NumericInputCore.propTypes = {
+    prefix: PropTypes.string,
+    suffix: PropTypes.string,
     maskLength: PropTypes.number,
     alwaysAllowZero: PropTypes.bool,
     value: PropTypes.number,
@@ -225,6 +234,8 @@ NumericInputCore.propTypes = {
 };
 
 NumericInputCore.defaultProps = {
+    prefix: "",
+    suffix: "",
     maskLength: 0,
     alwaysAllowZero: false,
     defaultValue: 0,
