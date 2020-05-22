@@ -1,0 +1,9 @@
+.directory
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+**/node_modules/
+**/build/
+**/lib/
+**/es/
