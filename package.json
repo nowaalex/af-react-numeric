@@ -1,6 +1,6 @@
 {
   "name": "af-react-numeric",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "lib/index.js",
   "repository": "git@github.com:nowaalex/af-react-numeric.git",
   "author": "alex <nowaalex@gmail.com>",
