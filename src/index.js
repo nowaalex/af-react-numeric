@@ -46,6 +46,8 @@ const getStringValue = ( numericValue, maskLength ) => {
     return missingSign + val;
 }
 
+const getValueAfterRelativeInputDefault = ( currentValue, valueToAdd ) => currentValue + valueToAdd;
+
 class NumericInputCore extends PureComponent {
 
     constructor( props ){
@@ -95,11 +97,11 @@ class NumericInputCore extends PureComponent {
     }
 
     changeValue( newNumericValue, isRelative ){
-        this.setState(({ numericValue, stringValue }) => {
+        this.setState(({ numericValue, stringValue }, { getValueAfterRelativeInput }) => {
             this.caretPos = this.inputRef.current.selectionStart;
             this.fractionPos = getFractionPos( stringValue );
             return {
-                numericValue: isRelative ? numericValue + newNumericValue : newNumericValue
+                numericValue: isRelative ? getValueAfterRelativeInput( numericValue, newNumericValue ) : newNumericValue
             };
         }, this.onAfterValueChanged );
     };
@@ -169,6 +171,7 @@ class NumericInputCore extends PureComponent {
             onChange,
             alwaysAllowZero,
             Component,
+            getValueAfterRelativeInput,
             ...props
         } = this.props;
     
@@ -214,6 +217,7 @@ NumericInputCore.propTypes = {
     value: PropTypes.number,
     defaultValue: PropTypes.number,
     onChange: PropTypes.func,
+    getValueAfterRelativeInput: PropTypes.func,
     min: PropTypes.number,
     max: PropTypes.number,
     step: PropTypes.number,
@@ -226,6 +230,7 @@ NumericInputCore.defaultProps = {
     defaultValue: 0,
     min: Number.MIN_SAFE_INTEGER,
     max: Number.MAX_SAFE_INTEGER,
+    getValueAfterRelativeInput: getValueAfterRelativeInputDefault,
     step: 1,
     Component: "input"
 };
